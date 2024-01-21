@@ -24,7 +24,7 @@ else()
     message("Doxygen required to build Doxygen Documentation")
 endif()
 
-project(ThreadpoolProject
+project(ThreadPool
     VERSION 0.0.1
     DESCRIPTION "Threadpool Library"
     LANGUAGES CXX
