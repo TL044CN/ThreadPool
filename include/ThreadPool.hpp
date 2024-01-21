@@ -1,93 +1,87 @@
+/**
+ * @file ThreadPool.hpp
+ * @author TL044CN
+ * @brief Threadpool class for multithreading purposes
+ * @version 0.2
+ * @date 2024-01-21
+ * 
+ * @copyright Copyright (c) TL044CN 2024 
+ * 
+ */
 #ifndef TT_THREADPOOL_HPP
 #define TT_THREADPOOL_HPP
 
+#include <vector>
+#include <thread>
 #include <queue>
 #include <future>
 #include <mutex>
-#include <vector>
-#include <thread>
 #include <condition_variable>
+#include <atomic>
 #include <cstdint>
 
 namespace TT {
 
 /**
- * @brief Manages threads for executing multiple functions in parallel, while using
- * only a certain number of threads.
+ * @brief Manages a number of Threads to do Tasks in parallel (using true multithreading)
  */
 class ThreadPool {
     using Task = std::packaged_task<void()>;
-    using uLock = std::unique_lock<std::mutex>;
-    
 private:
-    std::queue<Task> mTaskQueue;
     std::vector<std::thread> mThreads;
+    std::queue<std::packaged_task<void()>> mTasks;
 
     std::mutex mQueueMutex;
-    std::condition_variable mConditionVariable;
-
-    bool mTerminate = false;
-    const uint32_t mPoolSize;
+    std::condition_variable mThreadPoolConditional;
+    std::atomic<bool> mTerminate = false;
 
 public:
     /**
-     * @brief Construct a new Thread Pool and populate threads
+     * @brief Create and start new Thread Pool with the given amount of Threads
      *
+     * @param threadpoolSize number of Threads, defaults to the number of Hardware threads
      */
-    ThreadPool(const uint32_t poolSize = std::thread::hardware_concurrency());
+    ThreadPool(const uint32_t threadpoolSize = std::thread::hardware_concurrency());
 
     /**
-     * @brief Destroy the Thread Pool and stop operation
-     *
+     * @brief Cleans up the Threads of the Threadpool
      */
     ~ThreadPool();
 
 public:
     /**
-     * @brief Enqueues a new Task
+     * @brief Add a new Task to the Thread Pool
      *
-     * @tparam Func the type of the Function to run
-     * @tparam Ret the return type of the Function
-     * @param function the Function to run
-     * @return std::future<Ret> Future with the return value of the function
+     * @tparam Func Type of the Function to queue
+     * @tparam std::result_of_t<Func &&()> Result type of the Function to queue
+     * @param function the Function to queue
+     * @return std::future<Ret> Future, holding the returned value of the Function
      */
-    template<typename Func, typename Ret = std::result_of_t<Func && ()>>
+    template <typename Func, typename Ret = std::result_of_t<Func && ()>>
     std::future<Ret> queueJob(Func&& function) {
-        std::packaged_task<Ret()> task = std::packaged_task<Ret()>(std::forward<Func>(function));
-        std::future<Ret> future = task.get_future();
+        auto task = std::packaged_task<Ret()>(std::forward<Func>(function));
+        auto future = task.get_future();
         {
             std::lock_guard<std::mutex> lock(mQueueMutex);
-            mTaskQueue.emplace(Task(std::move(task)));
+            mTasks.emplace(Task(std::move(task)));
         }
-        mConditionVariable.notify_one();
+        mThreadPoolConditional.notify_one();
         return future;
     }
 
     /**
-     * @brief Returns weather the Threadpool is busy or not.
+     * @brief Returns true when the ThreadPool has active tasks
      *
-     * @return true Threadpool is currently processing
-     * @return false Threadpool is idle
+     * @return true the Threadpool has active tasks
+     * @return false the Threadpool is idle
      */
-    bool isBusy();
-
-    /**
-     * @brief Returns a Future to wait for, which resolves once no more Tasks are to be run
-     * @return std::future<void> future for when all tasks are done.
-     */
-    std::future<void> getWaitFuture();
-
-    /**
-     * @brief Waits until no more tasks are to be run
-     */
-    void wait();
+    bool hasTasks();
 
 private:
     /**
-     * @brief Main run function of the executing threads
-     *
+     * @brief Handles the execution of Tasks
      */
-    void runTasks();
+    void taskManagementLoop();
 
 };
 
