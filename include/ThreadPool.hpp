@@ -18,6 +18,7 @@ namespace TT {
 class ThreadPool {
     using Task = std::packaged_task<void()>;
     using uLock = std::unique_lock<std::mutex>;
+    
 private:
     std::queue<Task> mTaskQueue;
     std::vector<std::thread> mThreads;
