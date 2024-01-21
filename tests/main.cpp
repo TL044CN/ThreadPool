@@ -19,8 +19,6 @@ int main() {
         } catch ( std::exception e ) {
             std::cout << "Exception: " << e.what() << "\n";
         }
-
-        while(tp.isBusy()){}
         
         for ( auto& future : futures )
             std::cout << "i: " << future.get() << '\n';
