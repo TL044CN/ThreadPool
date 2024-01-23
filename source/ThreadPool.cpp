@@ -2,38 +2,57 @@
 
 namespace TT {
 
-    ThreadPool::ThreadPool(const uint32_t threadpoolSize) {
-        for(uint32_t num = threadpoolSize; num--;)
-            mThreads.emplace_back([this] { taskManagementLoop(); });
-    }
+ThreadPool::ThreadPool(const uint32_t threadpoolSize)
+    : mIdleThreads(threadpoolSize), mPause(ATOMIC_FLAG_INIT) {
+    for ( uint32_t num = threadpoolSize; num--;)
+        mThreads.emplace_back([this] { taskManagementLoop(); });
+}
 
-    ThreadPool::~ThreadPool() {
-        mTerminate = true;
-        mThreadPoolConditional.notify_all();
-        for(auto& thread : mThreads)
-            thread.join();
-        mThreads.clear();
-    }
+ThreadPool::~ThreadPool() {
+    mTerminate = true;
+    mThreadPoolConditional.notify_all();
+    for ( auto& thread : mThreads )
+        thread.join();
+    mThreads.clear();
+}
 
-    bool ThreadPool::hasTasks () {
-        bool empty;
-        {
-            std::lock_guard<std::mutex> loock(mQueueMutex);
-            empty = mTasks.empty();
-        }
-        return empty;
-    }
+void ThreadPool::pause() {
+    mPause.test_and_set();
+    mPause.notify_all();
+}
 
-    void ThreadPool::taskManagementLoop(){
-        while(true) {
-            std::unique_lock<std::mutex> lock(mQueueMutex);
-            mThreadPoolConditional.wait(lock, [this] { return !mTasks.empty() || mTerminate; });
-            if(mTerminate) break;
-            Task currentTask = std::move(mTasks.front());
-            mTasks.pop();
-            lock.unlock();
-            currentTask();
-        }
+void ThreadPool::resume() {
+    mPause.clear();
+    mPause.notify_all();
+}
+
+uint32_t ThreadPool::idleThreads() const {
+    return mIdleThreads;
+}
+
+bool ThreadPool::hasTasks() {
+    bool empty;
+    {
+        std::lock_guard<std::mutex> loock(mQueueMutex);
+        empty = mTasks.empty();
     }
+    return empty;
+}
+
+void ThreadPool::taskManagementLoop() {
+    while ( true ) {
+        if(mPause.test())
+            mPause.wait(true);
+        std::unique_lock<std::mutex> lock(mQueueMutex);
+        mThreadPoolConditional.wait(lock, [this] { return !mTasks.empty() || mTerminate; });
+        if ( mTerminate ) break;
+        --mIdleThreads;
+        Task currentTask = std::move(mTasks.front());
+        mTasks.pop();
+        lock.unlock();
+        currentTask();
+        ++mIdleThreads;
+    }
+}
 
 }
