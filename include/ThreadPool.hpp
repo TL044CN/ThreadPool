@@ -26,18 +26,42 @@ namespace TT {
  * @brief Manages a number of Threads to do Tasks in parallel (using true multithreading)
  */
 class ThreadPool {
-    using Task = std::packaged_task<void()>;
-
     template<typename Func>
 #if __cpp_lib_is_invocable
-    using resultType = std::invoke_result<Func && ()>::type;
+    using resultType = std::invoke_result<Func&&>::type;
 #else
-    using resultType = std::result_of<Func && ()>::type;
+    using resultType = std::result_of<Func&&>::type;
 #endif
+private:
+    /**
+     * @brief Task in the priority_queue
+     */
+    struct Task {
+        using Package = std::packaged_task<void()>;
+        mutable Package mTask;
+        uint32_t mPriority;
+
+        /**
+         * @brief Construct a new Task object
+         *
+         * @param task the task to do / function to execute
+         * @param priority the Priority of the task
+         */
+        Task(Package&& task, uint32_t priority);
+
+        /**
+         * @brief comparator class for tasks
+         *
+         */
+        class Compare {
+        public:
+            bool operator() (const Task& a, const Task& b) const;
+        };
+    };
 
 private:
     std::vector<std::thread> mThreads;
-    std::queue<std::packaged_task<void()>> mTasks;
+    std::priority_queue<Task, std::vector<Task>, Task::Compare> mTasks;
 
     std::mutex mQueueMutex;
     std::condition_variable mThreadPoolConditional;
@@ -64,17 +88,18 @@ public:
      * @brief Add a new Task to the Thread Pool
      *
      * @tparam Func Type of the Function to queue
-     * @tparam std::result_of_t<Func &&()> Result type of the Function to queue
+     * @tparam Ret Result type of the Function to queue
      * @param function the Function to queue
+     * @param priority the Priority of the task execution. higher numbers result in higher priority.
      * @return std::future<Ret> Future, holding the returned value of the Function
      */
     template <typename Func, typename Ret = resultType<Func>>
-    std::future<Ret> queueJob(Func&& function) {
+    std::future<Ret> queueJob(Func&& function, uint32_t priority = 0) {
         auto task = std::packaged_task<Ret()>(std::forward<Func>(function));
         auto future = task.get_future();
         {
             std::lock_guard<std::mutex> lock(mQueueMutex);
-            mTasks.emplace(Task(std::move(task)));
+            mTasks.emplace(Task(Task::Package(std::move(task)), priority));
         }
         mThreadPoolConditional.notify_one();
         return future;
