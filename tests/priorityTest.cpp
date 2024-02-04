@@ -1,12 +1,13 @@
-#include <iostream>
 #include <ThreadPool.hpp>
 
 #include <vector>
 #include <future>
+#include <iostream>
 
 using namespace TT;
 
-int main() {
+int priorityTest(int argc, char** argv) {
+
     std::cout << "Mighty Debugging Tool\n";
     try {
         ThreadPool tp;

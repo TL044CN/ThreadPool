@@ -47,17 +47,8 @@ if(GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
 endif()
 
 add_library(${PROJECT_NAME} source/ThreadPool.cpp)
-
 target_include_directories(${PROJECT_NAME} PUBLIC include)
 
-
 # tests:
-add_executable(tp_test tests/main.cpp)
-target_link_libraries(tp_test PRIVATE ${PROJECT_NAME})
-target_include_directories(tp_test PUBLIC include)
-
 enable_testing()
-add_test(
-    NAME tp_test
-    COMMAND $<TARGET_FILE:tp_test>
-)
+add_subdirectory(tests)
