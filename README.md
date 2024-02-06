@@ -1,4 +1,4 @@
-<a href='https://jenkins.pestbin.de/job/ThreadPool/'><img src='http://vanilla.pestbin.de:4417/buildStatus/icon?job=ThreadPool'></a>
+<a href='https://jenkins.shodan.fyi/job/ThreadPool/'><img src='https://jenkins.shodan.fyi/buildStatus/icon?job=ThreadPool'></a>
 # ThreadPool
 This small library is supposed to make parallel processing and multithreading effortless.
 
