@@ -85,16 +85,20 @@ public:
 
 public:
     /**
-     * @brief Add a new Task to the Thread Pool
+     * @brief                       Add a new Task to the Thread Pool
      *
-     * @tparam Func Type of the Function to queue
-     * @tparam Ret Result type of the Function to queue
-     * @param function the Function to queue
-     * @param priority the Priority of the task execution. higher numbers result in higher priority.
-     * @return std::future<Ret> Future, holding the returned value of the Function
+     * 
+     * @tparam                      Func Type of the Function to queue
+     * @tparam                      Ret Result type of the Function to queue
+     * 
+     * @param function              the Function to queue
+     * @param priority              the Priority of the task execution.
+     *                              higher numbers result in higher priority.
+     * 
+     * @return std::future<Ret>     Future, holding the returned value of the Function
      */
     template <typename Func, typename Ret = resultType<Func>>
-    std::future<Ret> queueJob(Func&& function, uint32_t priority = 0) {
+    [[nodiscard]] std::future<Ret> queueJob(Func&& function, uint32_t priority = 0) {
         auto task = std::packaged_task<Ret()>(std::forward<Func>(function));
         auto future = task.get_future();
         {
@@ -116,11 +120,26 @@ public:
     void resume();
 
     /**
+     * @brief Check weather the Threadpool is currently accepting new tasks or not.
+     * 
+     * @return true the Threadpool is paused
+     * @return false the Threadpool is not paused and executes new tasks
+     */
+    [[nodiscard]] bool isPaused() const ;
+
+    /**
      * @brief Returns the number of idle Threads
      *
      * @return uint32_t the number of idle threads
      */
     uint32_t idleThreads() const;
+
+    /**
+     * @brief Returns the number of Threads available to the Threadpool
+     * 
+     * @return const uint32_t 
+     */
+    const uint32_t maxThreads() const;
 
     /**
      * @brief Returns true when the ThreadPool has active tasks

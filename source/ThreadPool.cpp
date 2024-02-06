@@ -33,8 +33,16 @@ void ThreadPool::resume() {
     mPause.notify_all();
 }
 
+bool ThreadPool::isPaused() const {
+    return mPause.test();
+}
+
 uint32_t ThreadPool::idleThreads() const {
     return mIdleThreads;
+}
+
+const uint32_t ThreadPool::maxThreads() const {
+    return mThreads.size();
 }
 
 bool ThreadPool::hasTasks() {
@@ -48,16 +56,21 @@ bool ThreadPool::hasTasks() {
 
 void ThreadPool::taskManagementLoop() {
     while ( true ) {
+
         if ( mPause.test() )
             mPause.wait(true);
+
         std::unique_lock<std::mutex> lock(mQueueMutex);
         mThreadPoolConditional.wait(lock, [this] { return !mTasks.empty() || mTerminate; });
         if ( mTerminate ) break;
+
         --mIdleThreads;
+
         Task::Package currentTask = std::move(mTasks.top().mTask);
         mTasks.pop();
         lock.unlock();
         currentTask();
+
         ++mIdleThreads;
     }
 }
