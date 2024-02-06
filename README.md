@@ -25,4 +25,3 @@ auto vaule = return_future.get();
 ```
 As soon as `.get()` is called, the main thread will block until the value is provided.
 All the usual rules of `Futures` apply.
-
