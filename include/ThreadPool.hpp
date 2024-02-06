@@ -98,7 +98,7 @@ public:
      * @return std::future<Ret>     Future, holding the returned value of the Function
      */
     template <typename Func, typename Ret = resultType<Func>>
-    std::future<Ret> queueJob(Func&& function, uint32_t priority = 0) {
+    [[nodiscard]] std::future<Ret> queueJob(Func&& function, uint32_t priority = 0) {
         auto task = std::packaged_task<Ret()>(std::forward<Func>(function));
         auto future = task.get_future();
         {
@@ -125,7 +125,7 @@ public:
      * @return true the Threadpool is paused
      * @return false the Threadpool is not paused and executes new tasks
      */
-    bool isPaused() const;
+    [[nodiscard]] bool isPaused() const ;
 
     /**
      * @brief Returns the number of idle Threads
