@@ -2,6 +2,7 @@ create_test_sourcelist(Tests
     CommonCxxTests.cpp
     baseTest.cpp
     priorityTest.cpp
+    FizzBuzz.cpp
 )
 
 add_executable(CommonCxxTests ${Tests})
