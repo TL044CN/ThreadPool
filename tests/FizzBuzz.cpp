@@ -5,16 +5,15 @@
 #include <functional>
 
 constexpr uint32_t c_min_value = 1;
-constexpr uint32_t c_max_value = 100000;
+constexpr uint32_t c_max_value = 100000000;
 
-std::string runFizzBuzz(uint32_t min, uint32_t max) {
+std::string runFizzBuzz(std::ranges::input_range auto&& nums) {
     std::string result;
-    for ( auto num : std::views::iota(min, max) ) {
-        std::string append;
-        if ( ! (num % 3) ) append += "Fizz";
-        if ( ! (num % 5) ) append += "Buzz";
-        if ( append.size() == 0 ) append += std::to_string(num);
-        result += append + " ";
+    for ( const auto& num : nums ) {
+        if ( ! (num % 3) ) result += "Fizz";
+        if ( ! (num % 5) ) result += "Buzz";
+        if ( ! (num % 3 || num % 5) ) result += std::to_string(num);
+        result += " ";
     }
     return result;
 }
@@ -26,14 +25,8 @@ int FizzBuzz(int argc, char** argv) {
 
     const uint32_t stride = c_max_value / pool.maxThreads();
 
-    for ( uint32_t min = c_min_value; min < c_max_value; min += stride ) {
-        uint32_t max = min + stride;
-        
-        if ( max > c_max_value )
-            max = c_max_value;
-        
-        mFutures.push_back(pool.queueJob(std::bind(runFizzBuzz, min, max)));
-    }
+    for ( auto& chunk : std::views::iota(c_min_value, c_max_value) | std::views::chunk(3) )
+        mFutures.push_back(pool.queueJob(std::bind(runFizzBuzz, chunk)));
 
     std::cout << "Result:\n";
     for ( auto& future : mFutures )
